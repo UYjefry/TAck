@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ta-Te-Ti</title>
+<style>
+  :root{
+    --bg:#0f1720;
+    --card:#0b1220;
+    --accent:#10b981;
+    --accent-2:#60a5fa;
+    --muted:rgba(255,255,255,0.12);
+    --text:#e6eef8;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg,#071021 0%, #071827 100%);
+    color:var(--text);
+    font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    padding:20px;
+  }
+  .card{
+    width: min(520px, 96vw);
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:14px;
+    padding:18px;
+    box-shadow: 0 12px 40px rgba(2,6,23,0.7), inset 0 1px 0 rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.03);
+  }
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  h1{margin:0;font-size:20px;letter-spacing:0.2px}
+  .controls{display:flex;gap:8px;align-items:center}
+  button{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    color:var(--text);
+    border:1px solid var(--muted);
+    padding:8px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:600;
+  }
+  button.primary{
+    background:linear-gradient(180deg,var(--accent), #059669);
+    border:0;
+    color:#022;
+    box-shadow: 0 8px 18px rgba(16,185,129,0.12);
+  }
+  .board-wrap{
+    display:grid;
+    grid-template-columns: 1fr 160px;
+    gap:16px;
+    align-items:start;
+  }
+  .board{
+    width:100%;
+    aspect-ratio:1/1;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    padding:8px;
+    border-radius:12px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.002));
+    border:1px solid rgba(255,255,255,0.03);
+  }
+  .cell{
+    background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.002));
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:48px;
+    user-select:none;
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease;
+    border:1px solid rgba(255,255,255,0.03);
+  }
+  .cell:active{transform:scale(.98)}
+  .cell.empty:hover{box-shadow: 0 8px 20px rgba(2,6,23,0.6); transform:translateY(-4px)}
+  .panel{
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.002));
+    padding:12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.03);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    min-height:150px;
+  }
+  .status{font-weight:700}
+  .score{display:flex;gap:8px;align-items:center}
+  .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-weight:700}
+  .winner{color:var(--accent); font-size:18px; font-weight:800}
+  .line{
+    position:absolute;
+    height:4px;
+    background:linear-gradient(90deg,var(--accent-2), var(--accent));
+    border-radius:999px;
+    transform-origin:center;
+    box-shadow:0 6px 20px rgba(96,165,250,0.12);
+  }
+  footer{margin-top:12px; font-size:13px; color:rgba(255,255,255,0.6); text-align:center}
+  @media(max-width:640px){
+    .board-wrap{grid-template-columns:1fr}
+    .panel{order:2}
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <header>
+      <h1>Ta-Te-Ti</h1>
+      <div class="controls">
+        <div class="pill" id="turn">Turno: X</div>
+        <button id="reset" title="Reiniciar partida">Reiniciar</button>
+        <button id="resetAll" title="Reiniciar marcador">Reiniciar marcador</button>
+      </div>
+    </header>
+
+    <div class="board-wrap">
+      <div id="board" class="board" aria-label="Tablero Ta-Te-Ti">
+        <!-- 9 celdas generadas por JS -->
+      </div>
+
+      <div class="panel">
+        <div class="status">Estado: <span id="statusText">En juego</span></div>
+        <div class="score">
+          <div class="pill">X: <span id="scoreX">0</span></div>
+          <div class="pill">O: <span id="scoreO">0</span></div>
+          <div class="pill">Empates: <span id="scoreD">0</span></div>
+        </div>
+        <div>
+          <strong>Cómo jugar</strong>
+          <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75)">Haz clic en una casilla para colocar X u O. Gana quien alinee 3 en fila. Reinicia cuando quieras.</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>Hecho con ❤️ — Ta-Te-Ti simple</footer>
+  </div>
+
+<script>
+(function(){
+  const boardEl = document.getElementById('board');
+  const turnEl = document.getElementById('turn');
+  const statusText = document.getElementById('statusText');
+  const scoreXEl = document.getElementById('scoreX');
+  const scoreOEl = document.getElementById('scoreO');
+  const scoreDEl = document.getElementById('scoreD');
+  const resetBtn = document.getElementById('reset');
+  const resetAllBtn = document.getElementById('resetAll');
+
+  // estado
+  let board = Array(9).fill(null); // null / 'X' / 'O'
+  let current = 'X';
+  let playing = true;
+  let scores = {X:0, O:0, D:0};
+
+  // líneas ganadoras (índices)
+  const wins = [
+    [0,1,2],[3,4,5],[6,7,8], // filas
+    [0,3,6],[1,4,7],[2,5,8], // columnas
+    [0,4,8],[2,4,6]          // diagonales
+  ];
+
+  // crear celdas
+  function createBoard(){
+    boardEl.innerHTML = '';
+    for(let i=0;i<9;i++){
+      const cell = document.createElement('div');
+      cell.className = 'cell empty';
+      cell.dataset.index = i;
+      cell.setAttribute('role','button');
+      cell.setAttribute('aria-label','Celda '+(i+1));
+      cell.addEventListener('click', onCellClick);
+      boardEl.appendChild(cell);
+    }
+  }
+
+  function onCellClick(e){
+    if(!playing) return;
+    const idx = Number(e.currentTarget.dataset.index);
+    if(board[idx]) return; // ya ocupada
+    board[idx] = current;
+    render();
+    const res = checkWin();
+    if(res.win){
+      playing = false;
+      highlightWin(res.combo);
+      statusText.textContent = current + ' gana';
+      statusText.className = '';
+      (current === 'X' ? scores.X++ : scores.O++);
+      updateScores();
+    } else if(board.every(Boolean)){
+      playing = false;
+      statusText.textContent = 'Empate';
+      scores.D++;
+      updateScores();
+    } else {
+      current = current === 'X' ? 'O' : 'X';
+      turnEl.textContent = 'Turno: ' + current;
+    }
+  }
+
+  function render(){
+    for(let i=0;i<9;i++){
+      const cell = boardEl.children[i];
+      cell.classList.toggle('empty', !board[i]);
+      cell.textContent = board[i] || '';
+      // estilo X / O
+      if(board[i]==='X'){
+        cell.style.color = '#10b981';
+        cell.style.fontWeight = '800';
+        cell.style.textShadow = '0 6px 18px rgba(16,185,129,0.12)';
+      } else if(board[i]==='O'){
+        cell.style.color = '#60a5fa';
+        cell.style.fontWeight = '800';
+        cell.style.textShadow = '0 6px 18px rgba(96,165,250,0.12)';
+      } else {
+        cell.style.color = '';
+        cell.style.textShadow = '';
+      }
+    }
+  }
+
+  function checkWin(){
+    for(const combo of wins){
+      const [a,b,c] = combo;
+      if(board[a] && board[a] === board[b] && board[a] === board[c]){
+        return {win:true, combo};
+      }
+    }
+    return {win:false};
+  }
+
+  function highlightWin(combo){
+    // resalta las celdas ganadoras y dibuja una línea sobre ellas
+    combo.forEach(i => boardEl.children[i].style.boxShadow = '0 20px 50px rgba(255,255,255,0.03), inset 0 0 0 2px rgba(255,255,255,0.02)');
+    // crear línea visual central
+    const rectA = boardEl.children[combo[0]].getBoundingClientRect();
+    const rectC = boardEl.children[combo[2]].getBoundingClientRect();
+    const containerRect = boardEl.getBoundingClientRect();
+
+    const line = document.createElement('div');
+    line.className = 'line';
+    document.body.appendChild(line);
+
+    const x1 = rectA.left + rectA.width/2 - containerRect.left;
+    const y1 = rectA.top + rectA.height/2 - containerRect.top;
+    const x2 = rectC.left + rectC.width/2 - containerRect.left;
+    const y2 = rectC.top + rectC.height/2 - containerRect.top;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.hypot(dx,dy);
+    const angle = Math.atan2(dy,dx) * (180/Math.PI);
+
+    // posición relativa al tablero
+    line.style.width = Math.max(length, 40) + 'px';
+    line.style.left = (containerRect.left + window.scrollX + x1) + 'px';
+    line.style.top = (containerRect.top + window.scrollY + y1 - 2) + 'px';
+    line.style.transform = `rotate(${angle}deg) translateX(0)`;
+    // eliminar línea al reiniciar
+    setTimeout(()=>{ line.style.opacity = 1; }, 10);
+    line.dataset.temp = 'true';
+  }
+
+  function clearHighlights(){
+    // quitar sombras
+    for(let i=0;i<9;i++){
+      boardEl.children[i].style.boxShadow = '';
+    }
+    // quitar línea
+    document.querySelectorAll('.line[data-temp]').forEach(n => n.remove());
+  }
+
+  function updateScores(){
+    scoreXEl.textContent = scores.X;
+    scoreOEl.textContent = scores.O;
+    scoreDEl.textContent = scores.D;
+    if(!playing && !board.every(Boolean) ){
+      // ya hubo ganador
+      // nothing
+    } else if(!playing && board.every(Boolean)){
+      // empate
+    }
+  }
+
+  function reset(){
+    board = Array(9).fill(null);
+    current = 'X';
+    playing = true;
+    turnEl.textContent = 'Turno: ' + current;
+    statusText.textContent = 'En juego';
+    clearHighlights();
+    render();
+  }
+
+  function resetAll(){
+    scores = {X:0,O:0,D:0};
+    updateScores();
+    reset();
+  }
+
+  // atajos de teclado: 1-9 para colocar (teclado numérico o fila superior)
+  window.addEventListener('keydown', e=>{
+    const num = (e.key >= '1' && e.key <= '9') ? Number(e.key) : null;
+    // también teclas Q..O en fila superior? no necesario
+    if(num){
+      const idx = num - 1; // 1 -> celda 0
+      // en el tablero numérico: queremos mapa más natural: 1 abajo izquierda? 
+      // para simplicidad: 1..9 mapean left-to-right top-to-bottom (1 = arr-izq)
+      // si prefieres otro mapeo, avísame.
+      if(playing && !board[idx]){
+        board[idx] = current;
+        render();
+        const res = checkWin();
+        if(res.win){
+          playing = false;
+          highlightWin(res.combo);
+          statusText.textContent = current + ' gana';
+          (current === 'X' ? scores.X++ : scores.O++);
+          updateScores();
+        } else if(board.every(Boolean)){
+          playing = false;
+          statusText.textContent = 'Empate';
+          scores.D++;
+          updateScores();
+        } else {
+          current = current === 'X' ? 'O' : 'X';
+          turnEl.textContent = 'Turno: ' + current;
+        }
+      }
+    }
+    // R para reiniciar partida
+    if(e.key.toLowerCase() === 'r') reset();
+  });
+
+  resetBtn.addEventListener('click', reset);
+  resetAllBtn.addEventListener('click', resetAll);
+
+  // init
+  createBoard();
+  render();
+  updateScores();
+})();
+</script>
+</body>
+</html>
